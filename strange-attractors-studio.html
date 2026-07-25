@@ -1490,10 +1490,34 @@
   });
 
   document.getElementById("rebuild").addEventListener("click",buildSculpture);
+  // draw text with manual letter-spacing (ctx.letterSpacing is not universal)
+  function drawSpaced(ctx,text,x,y,spacing){
+    for(var i=0;i<text.length;i++){
+      ctx.fillText(text[i],x,y);
+      x+=ctx.measureText(text[i]).width+spacing;
+    }
+    return x;
+  }
   document.getElementById("save").addEventListener("click",function(){
+    var src=renderer.domElement;
+    var scale=src.width/window.innerWidth;   // canvas px per CSS px
+    var c=document.createElement("canvas");
+    c.width=src.width;c.height=src.height;
+    var ctx=c.getContext("2d");
+    ctx.drawImage(src,0,0);
+    // header overlay, matching the on-screen header styles
+    var x=26*scale, baseline=33*scale;
+    ctx.textBaseline="alphabetic";
+    ctx.fillStyle="#3d3226";
+    ctx.font=Math.round(16*scale)+'px Georgia,"Times New Roman",serif';
+    x=drawSpaced(ctx,"STRANGE ATTRACTOR STUDIO",x,baseline,0.18*16*scale);
+    x+=14*scale;
+    ctx.fillStyle="#8a7a66";
+    ctx.font=Math.round(11*scale)+'px Consolas,monospace';
+    ctx.fillText(ATTRACTORS[attractorName].eq,x,baseline);
     var a=document.createElement("a");
     a.download=attractorName.toLowerCase().replace(/\s+/g,"-")+"-"+Date.now()+".png";
-    a.href=renderer.domElement.toDataURL("image/png");
+    a.href=c.toDataURL("image/png");
     a.click();
   });
   document.getElementById("toggle").addEventListener("click",function(){
