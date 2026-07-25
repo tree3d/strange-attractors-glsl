@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strange Attractor Studio — Studio Realism</title>
+<style>
+  :root{
+    --panel:rgba(250,247,240,0.84);
+    --line:rgba(90,70,50,0.18);
+    --text:#3d3226;
+    --dim:#8a7a66;
+    --accent:#a4703b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;
+    font-family:Georgia,"Times New Roman",serif;color:var(--text)}
+  #scene{position:fixed;inset:0;cursor:grab}
+  #scene:active{cursor:grabbing}
+  header{position:fixed;top:0;left:0;right:0;padding:20px 26px;
+    display:flex;align-items:baseline;gap:14px;pointer-events:none;z-index:5}
+  header h1{font-size:16px;font-weight:normal;letter-spacing:.18em;text-transform:uppercase}
+  header .eq{font-family:Consolas,monospace;font-size:11px;color:var(--dim)}
+  #panel{position:fixed;top:64px;right:18px;width:256px;z-index:6;
+    background:var(--panel);backdrop-filter:blur(12px);
+    border:1px solid var(--line);border-radius:10px;padding:16px;
+    max-height:calc(100vh - 90px);overflow-y:auto;
+    box-shadow:0 8px 30px rgba(60,40,20,.12)}
+  .group{margin-bottom:14px}
+  .group h2{font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--dim);margin-bottom:8px;font-family:system-ui,sans-serif}
+  .row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .row label{font-family:Consolas,monospace;font-size:12px;width:58px}
+  .row output{font-family:Consolas,monospace;font-size:11px;width:42px;
+    text-align:right;color:var(--accent)}
+  select{width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);
+    background:rgba(255,255,255,.6);color:var(--text);
+    font-family:system-ui,sans-serif;font-size:12.5px;outline:none;cursor:pointer}
+  select:focus-visible{outline:2px solid var(--accent)}
+  input[type=range]{flex:1;appearance:none;height:3px;border-radius:2px;
+    background:rgba(90,70,50,.25);outline:none}
+  input[type=range]::-webkit-slider-thumb{appearance:none;width:12px;height:12px;
+    border-radius:50%;background:var(--accent);cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:12px;height:12px;border:none;
+    border-radius:50%;background:var(--accent);cursor:pointer}
+  input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+  .mats{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .mat{height:30px;border-radius:6px;border:1px solid rgba(0,0,0,.12);cursor:pointer;
+    font-size:10px;letter-spacing:.08em;color:rgba(255,255,255,.95);
+    display:flex;align-items:center;justify-content:center;
+    text-shadow:0 1px 3px rgba(0,0,0,.7);font-family:system-ui,sans-serif}
+  .mat.active{outline:2px solid var(--accent);outline-offset:1px}
+  .btns{display:flex;gap:6px}
+  button.act{flex:1;padding:9px 0;border-radius:8px;border:1px solid var(--line);
+    background:rgba(164,112,59,.1);color:var(--text);font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;cursor:pointer;
+    font-family:system-ui,sans-serif;transition:background .15s}
+  button.act:hover{background:rgba(164,112,59,.22)}
+  button.act.on{background:rgba(164,112,59,.4)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  #status{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    font-size:11px;color:var(--dim);letter-spacing:.06em;z-index:5;
+    font-family:system-ui,sans-serif;pointer-events:none;transition:opacity .8s}
+  #toggle{position:fixed;top:64px;right:18px;z-index:7;display:none;
+    padding:8px 14px;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel);color:var(--text);font-size:11px;cursor:pointer}
+  @media (max-width:640px){
+    #panel{display:none;width:calc(100vw - 36px)}
+    #panel.open{display:block}
+    #toggle{display:block}
+    header .eq{display:none}
+  }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+
+<header>
+  <h1>Strange Attractor Studio</h1>
+  <span class="eq" id="eqLabel"></span>
+</header>
+
+<button id="toggle">Controls</button>
+
+<div id="panel">
+  <div class="group">
+    <h2>Attractor</h2>
+    <select id="attractor"></select>
+  </div>
+
+  <div class="group" id="eqGroup">
+    <h2>Equation parameters</h2>
+    <div id="eqSliders"></div>
+  </div>
+
+  <div class="group">
+    <h2>Profile</h2>
+    <div class="row"><label for="width">width</label><input type="range" id="width" min="0.15" max="1.6" step="0.05" value="0.75"><output id="widthV">0.75</output></div>
+    <div class="row"><label for="depth">depth</label><input type="range" id="depth" min="0.1" max="1.2" step="0.05" value="0.35"><output id="depthV">0.35</output></div>
+    <div class="row"><label for="bevel">bevel</label><input type="range" id="bevel" min="0.02" max="0.5" step="0.01" value="0.12"><output id="bevelV">0.12</output></div>
+    <div class="row"><label for="loops">detail</label><input type="range" id="loops" min="3000" max="30000" step="500" value="9000"><output id="loopsV">9000</output></div>
+    <div class="row"><label for="facets">facets</label><input type="range" id="facets" min="2" max="8" step="1" value="3"><output id="facetsV">3</output></div>
+    <div class="row"><label for="clear">clearance</label><input type="range" id="clear" min="0.1" max="0.45" step="0.01" value="0.3"><output id="clearV">0.30</output></div>
+    <div class="row"><label for="polish">polish</label><input type="range" id="polish" min="0" max="1" step="0.05" value="0.45"><output id="polishV">0.45</output></div>
+    <div class="row"><label for="aniso">brushed</label><input type="range" id="aniso" min="0" max="0.9" step="0.05" value="0.6"><output id="anisoV">0.60</output></div>
+  </div>
+
+  <div class="group">
+    <h2>Light &amp; atmosphere</h2>
+    <div class="row"><label for="sun">sunlight</label><input type="range" id="sun" min="0.3" max="2.5" step="0.05" value="1.3"><output id="sunV">1.30</output></div>
+    <div class="row"><label for="angle">sun angle</label><input type="range" id="angle" min="0" max="360" step="2" value="130"><output id="angleV">130</output></div>
+    <div class="row"><label for="soft">area soft</label><input type="range" id="soft" min="0" max="1" step="0.05" value="0.5"><output id="softV">0.50</output></div>
+    <div class="row"><label for="haze">haze</label><input type="range" id="haze" min="0" max="1" step="0.05" value="0.35"><output id="hazeV">0.35</output></div>
+    <div class="row"><label for="tint">tint</label><input type="range" id="tint" min="0" max="1" step="0.05" value="0.75"><output id="tintV">0.75</output></div>
+    <div class="row"><label for="gloss">floor gloss</label><input type="range" id="gloss" min="0" max="1" step="0.05" value="0.55"><output id="glossV">0.55</output></div>
+    <div class="row"><label for="ao">occlusion</label><input type="range" id="ao" min="0" max="1" step="0.05" value="0.65"><output id="aoV">0.65</output></div>
+    <div class="row"><label for="rot">rotate</label><input type="range" id="rot" min="0" max="10" step="0.5" value="1.5"><output id="rotV">1.5</output></div>
+  </div>
+
+  <div class="group">
+    <h2>Studio panels</h2>
+    <div class="row"><label for="p1">1 power</label><input type="range" id="p1" min="0" max="4" step="0.05" value="1.60"><output id="p1V">1.60</output></div>
+    <div class="row"><label for="p1az">1 azim</label><input type="range" id="p1az" min="-180" max="180" step="2" value="0"><output id="p1azV">0</output></div>
+    <div class="row"><label for="p1sz">1 size</label><input type="range" id="p1sz" min="0.3" max="2.5" step="0.05" value="1.00"><output id="p1szV">1.00</output></div>
+    <div class="row"><label for="p2">2 power</label><input type="range" id="p2" min="0" max="4" step="0.05" value="0.90"><output id="p2V">0.90</output></div>
+    <div class="row"><label for="p2az">2 azim</label><input type="range" id="p2az" min="-180" max="180" step="2" value="132"><output id="p2azV">132</output></div>
+    <div class="row"><label for="p2sz">2 size</label><input type="range" id="p2sz" min="0.3" max="2.5" step="0.05" value="1.00"><output id="p2szV">1.00</output></div>
+    <div class="row"><label for="p3">3 power</label><input type="range" id="p3" min="0" max="4" step="0.05" value="0.70"><output id="p3V">0.70</output></div>
+    <div class="row"><label for="p3az">3 azim</label><input type="range" id="p3az" min="-180" max="180" step="2" value="-115"><output id="p3azV">-115</output></div>
+    <div class="row"><label for="p3sz">3 size</label><input type="range" id="p3sz" min="0.3" max="2.5" step="0.05" value="1.00"><output id="p3szV">1.00</output></div>
+  </div>
+
+  <div class="group">
+    <h2>Backdrop</h2>
+    <div class="mats" id="bgs"></div>
+  </div>
+
+  <div class="group">
+    <h2>Material</h2>
+    <div class="mats" id="mats"></div>
+  </div>
+
+  <div class="group">
+    <h2>Quality</h2>
+    <div class="btns">
+      <button class="act" id="qLow" type="button">Low</button>
+      <button class="act" id="qMed" type="button">Med</button>
+      <button class="act on" id="qHigh" type="button">High</button>
+    </div>
+  </div>
+
+  <div class="group btns">
+    <button class="act" id="rebuild">Carve</button>
+    <button class="act" id="save">Save PNG</button>
+  </div>
+</div>
+
+<p id="status">carving…</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ============================================================
+  // Attractor catalogue (after Jürgen Meier's collection, the
+  // basis of the Chaotic Atmospheres series)
+  // ============================================================
+  var ATTRACTORS={
+    "Lorenz":{eq:"ẋ=σ(y−x) · ẏ=x(ρ−z)−y · ż=xy−βz",
+      dt:0.0035,stride:2,seed:[0.1,0.1,20],burn:1500,
+      p:{"σ":[10,1,30],"ρ":[28,5,60],"β":[2.667,0.5,8]},
+      f:function(x,y,z,q){return [q["σ"]*(y-x), x*(q["ρ"]-z)-y, x*y-q["β"]*z];}},
+    "Rössler":{eq:"ẋ=−y−z · ẏ=x+ay · ż=b+z(x−c)",
+      dt:0.010,stride:3,seed:[1,1,1],burn:2000,
+      p:{"a":[0.2,0.05,0.6],"b":[0.2,0.05,2],"c":[5.7,2,14]},
+      f:function(x,y,z,q){return [-y-z, x+q.a*y, q.b+z*(x-q.c)];}},
+    "Aizawa":{eq:"ẋ=(z−b)x−dy · ẏ=dx+(z−b)y · ż=c+az−z³/3−(x²+y²)(1+ez)+fzx³",
+      dt:0.005,stride:2,seed:[0.1,0,0],burn:3000,
+      p:{"a":[0.95,0.5,1.3],"b":[0.7,0.3,1.1],"c":[0.6,0.2,1.2],
+         "d":[3.5,1.5,5],"e":[0.25,0,0.6],"f":[0.1,0,0.3]},
+      f:function(x,y,z,q){
+        return [(z-q.b)*x-q.d*y, q.d*x+(z-q.b)*y,
+                q.c+q.a*z-z*z*z/3-(x*x+y*y)*(1+q.e*z)+q.f*z*x*x*x];}},
+    "Halvorsen":{eq:"ẋ=−ax−4y−4z−y² (cyclic)",
+      dt:0.005,stride:2,seed:[-1.48,-1.51,2.04],burn:2000,
+      p:{"a":[1.4,0.6,3]},
+      f:function(x,y,z,q){var a=q.a;
+        return [-a*x-4*y-4*z-y*y, -a*y-4*z-4*x-z*z, -a*z-4*x-4*y-x*x];}},
+    "Thomas":{eq:"ẋ=sin y−bx (cyclic)",
+      dt:0.05,stride:4,seed:[0.1,0,0],burn:2000,
+      p:{"b":[0.208186,0.03,0.5]},
+      f:function(x,y,z,q){var b=q.b;
+        return [Math.sin(y)-b*x, Math.sin(z)-b*y, Math.sin(x)-b*z];}},
+    "Dadras":{eq:"ẋ=y−px+oyz · ẏ=ry−xz+z · ż=cxy−ez",
+      dt:0.004,stride:2,seed:[1.1,2.1,-2],burn:2000,
+      p:{"p":[3,1,5],"o":[2.7,1,5],"r":[1.7,0.5,4],"c":[2,0.5,4],"e":[9,3,15]},
+      f:function(x,y,z,q){
+        return [y-q.p*x+q.o*y*z, q.r*y-x*z+z, q.c*x*y-q.e*z];}},
+    "Chen":{eq:"ẋ=a(y−x) · ẏ=(c−a)x−xz+cy · ż=xy−bz",
+      dt:0.002,stride:2,seed:[-0.1,0.5,-0.6],burn:3000,
+      p:{"a":[35,20,50],"b":[3,1,8],"c":[28,15,35]},
+      f:function(x,y,z,q){
+        return [q.a*(y-x), (q.c-q.a)*x-x*z+q.c*y, x*y-q.b*z];}},
+    "Chen-Lee":{eq:"ẋ=ax−yz · ẏ=by+xz · ż=cz+xy/3",
+      dt:0.004,stride:2,seed:[1,0,4.5],burn:3000,
+      p:{"a":[5,2,8],"b":[-10,-14,-5],"c":[-0.38,-1,-0.1]},
+      f:function(x,y,z,q){return [q.a*x-y*z, q.b*y+x*z, q.c*z+x*y/3];}},
+    "Four-Wing":{eq:"ẋ=ax+yz · ẏ=bx+cy−xz · ż=−z−xy",
+      dt:0.010,stride:3,seed:[1.3,-0.18,0.01],burn:4000,
+      p:{"a":[0.2,0.05,0.4],"b":[0.01,-0.1,0.1],"c":[-0.4,-0.8,-0.1]},
+      f:function(x,y,z,q){
+        return [q.a*x+y*z, q.b*x+q.c*y-x*z, -z-x*y];}},
+    "Arneodo":{eq:"ẋ=y · ẏ=z · ż=−ax−by−z+dx³",
+      dt:0.008,stride:2,seed:[0.2,0.2,0.2],burn:3000,
+      p:{"a":[-5.5,-8,-3],"b":[3.5,1.5,6],"d":[-1,-2,-0.3]},
+      f:function(x,y,z,q){
+        return [y, z, -q.a*x-q.b*y-z+q.d*x*x*x];}},
+    "Burke-Shaw":{eq:"ẋ=−s(x+y) · ẏ=−y−sxz · ż=sxy+v",
+      dt:0.003,stride:2,seed:[0.6,0,0],burn:3000,
+      p:{"s":[10,5,15],"v":[4.272,1,9]},
+      f:function(x,y,z,q){
+        return [-q.s*(x+y), -y-q.s*x*z, q.s*x*y+q.v];}},
+    "Dequan Li":{eq:"ẋ=a(y−x)+cxz · ẏ=ex+fy−xz · ż=bz+xy−dx²",
+      dt:0.0004,stride:2,seed:[0.01,0,0],burn:4000,
+      p:{"a":[40,20,60],"b":[1.833,0.5,4],"c":[0.16,0.05,0.4],
+         "d":[0.65,0.2,1.5],"e":[55,30,80],"f":[20,10,35]},
+      f:function(x,y,z,q){
+        return [q.a*(y-x)+q.c*x*z, q.e*x+q.f*y-x*z, q.b*z+x*y-q.d*x*x];}},
+    "Genesio-Tesi":{eq:"ẋ=y · ẏ=z · ż=−cx−by−az+x²",
+      dt:0.010,stride:3,seed:[0.1,0.1,0.1],burn:3000,
+      p:{"a":[0.44,0.2,0.9],"b":[1.1,0.6,2],"c":[1,0.5,1.8]},
+      f:function(x,y,z,q){
+        return [y, z, -q.c*x-q.b*y-q.a*z+x*x];}},
+    "Hadley":{eq:"ẋ=−y²−z²−ax+aF · ẏ=xy−bxz−y+G · ż=bxy+xz−z",
+      dt:0.008,stride:2,seed:[0.39,-1,0.3],burn:3000,
+      p:{"a":[0.2,0.05,0.6],"b":[4,1,8],"F":[8,3,14],"G":[1,0.2,3]},
+      f:function(x,y,z,q){
+        return [-y*y-z*z-q.a*x+q.a*q.F, x*y-q.b*x*z-y+q.G, q.b*x*y+x*z-z];}},
+    "Newton-Leipnik":{eq:"ẋ=−ax+y+10yz · ẏ=−x−0.4y+5xz · ż=bz−5xy",
+      dt:0.010,stride:2,seed:[0.349,0,-0.16],burn:3000,
+      p:{"a":[0.4,0.1,0.9],"b":[0.175,0.05,0.4]},
+      f:function(x,y,z,q){
+        return [-q.a*x+y+10*y*z, -x-0.4*y+5*x*z, q.b*z-5*x*y];}},
+    "Nosé-Hoover":{eq:"ẋ=y · ẏ=−x+yz · ż=a−y²",
+      dt:0.010,stride:3,seed:[1,0,0],burn:2000,
+      p:{"a":[1.5,0.5,4]},
+      f:function(x,y,z,q){return [y, -x+y*z, q.a-y*y];}},
+    "Rucklidge":{eq:"ẋ=−kx+ly−yz · ẏ=x · ż=−z+y²",
+      dt:0.010,stride:2,seed:[1,0,4.5],burn:3000,
+      p:{"k":[2,0.5,4],"l":[6.7,3,12]},
+      f:function(x,y,z,q){
+        return [-q.k*x+q.l*y-y*z, x, -z+y*y];}},
+    "Sprott B":{eq:"ẋ=a·yz · ẏ=x−y · ż=b−xy",
+      dt:0.010,stride:3,seed:[0.1,0.1,0.1],burn:3000,
+      p:{"a":[1,0.4,2.5],"b":[1,0.3,2.5]},
+      f:function(x,y,z,q){return [q.a*y*z, x-y, q.b-x*y];}},
+    "Shimizu-Morioka":{eq:"ẋ=y · ẏ=x−ay−xz · ż=−bz+x²",
+      dt:0.008,stride:3,seed:[0.1,0.1,0.1],burn:3000,
+      p:{"a":[0.75,0.3,1.4],"b":[0.45,0.15,1]},
+      f:function(x,y,z,q){
+        return [y, x-q.a*y-x*z, -q.b*z+x*x];}},
+    "Bouali":{eq:"ẋ=x(4−y)+az · ẏ=−y(1−x²) · ż=−x(1.5−sz)−0.05z",
+      dt:0.008,stride:2,seed:[0.3,1,0],burn:3000,
+      p:{"a":[0.3,0.05,1],"s":[1,0.3,2]},
+      f:function(x,y,z,q){
+        return [x*(4-y)+q.a*z, -y*(1-x*x), -x*(1.5-q.s*z)-0.05*z];}},
+    "Rabinovich-Fabrikant":{eq:"ẋ=y(z−1+x²)+γx · ẏ=x(3z+1−x²)+γy · ż=−2z(α+xy)",
+      dt:0.004,stride:2,seed:[-1,0,0.5],burn:3000,
+      p:{"α":[0.14,0.05,0.35],"γ":[0.10,0.02,0.25]},
+      f:function(x,y,z,q){
+        return [y*(z-1+x*x)+q["γ"]*x, x*(3*z+1-x*x)+q["γ"]*y, -2*z*(q["α"]+x*y)];}}
+  };
+  var attractorName="Lorenz";
+
+  var MATERIALS={
+    "Steel":   {kind:"metal", color:"#c9ccd1", rough:0.34, aniso:0.70},
+    "Graphite":{kind:"metal", color:"#4c4f54", rough:0.48, aniso:0.60},
+    "Bronze":  {kind:"metal", color:"#a8743e", rough:0.40, aniso:0.65},
+    "Copper":  {kind:"metal", color:"#b87333", rough:0.36, aniso:0.60},
+    "Gold":    {kind:"metal", color:"#d4af37", rough:0.32, aniso:0.55},
+    "Walnut":  {kind:"wood", base:"#6e4f36", ring:"#4a3322", dark:"#33241a", grain:1.15},
+    "Oak":     {kind:"wood", base:"#b98d5f", ring:"#8a6238", dark:"#6e4d2b", grain:1.0},
+    "Ebony":   {kind:"wood", base:"#3a2f28", ring:"#241c17", dark:"#15100d", grain:0.8}
+  };
+  var matName="Steel";
+
+  function makeWoodTextures(spec){
+    var W=2048,H=512;
+    var c=document.createElement("canvas");c.width=W;c.height=H;
+    var x=c.getContext("2d");
+    x.fillStyle=spec.base;x.fillRect(0,0,W,H);
+    function rand(seed){var s=seed;return function(){s=(s*16807)%2147483647;return s/2147483647;};}
+    var rnd=rand(42);
+    for(var band=0;band<90;band++){
+      var y0=rnd()*H, amp=4+rnd()*14, freq=0.003+rnd()*0.008, thick=1+rnd()*4*spec.grain;
+      x.strokeStyle=spec.ring;x.globalAlpha=0.10+rnd()*0.22;x.lineWidth=thick;
+      x.beginPath();
+      for(var u=0;u<=W;u+=8){
+        var yy=y0+Math.sin(u*freq+band)*amp+Math.sin(u*freq*3.7)*amp*0.3;
+        if(u===0)x.moveTo(u,yy);else x.lineTo(u,yy);
+      }
+      x.stroke();
+    }
+    x.globalAlpha=0.08;
+    for(var i=0;i<5000;i++){
+      var gx=rnd()*W, gy=rnd()*H, len=6+rnd()*30;
+      x.strokeStyle=rnd()>0.5?spec.dark:spec.ring;x.lineWidth=0.7;
+      x.beginPath();x.moveTo(gx,gy);x.lineTo(gx+len,gy+(rnd()-0.5)*2);x.stroke();
+    }
+    x.globalAlpha=1;
+    var map=new THREE.CanvasTexture(c);
+    map.wrapS=map.wrapT=THREE.RepeatWrapping;map.repeat.set(10,1);map.anisotropy=8;
+    return {map:map};
+  }
+
+  // ============================================================
+  // Shared GLSL chunks
+  // ============================================================
+  var GLSL_COMMON=[
+    "#define PI 3.14159265359",
+    "float unpackDepthRGBA(vec4 v){",
+    "  const vec4 bitSh = vec4(1.0, 1.0/255.0, 1.0/65025.0, 1.0/16581375.0);",
+    "  return dot(v, bitSh);",
+    "}",
+    "vec3 ACES(vec3 x){",
+    "  return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);",
+    "}",
+    "float ign(vec2 p){",
+    "  return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));",
+    "}"
+  ].join("\n");
+
+  // Shared procedural studio environment: one light model feeds the
+  // backdrop dome, the sculpture's reflections, the floor's ambient and
+  // its glossy mirror fallback — so every surface agrees on the room.
+  var GLSL_ENV=[
+    "uniform vec3 uEnvFloor; uniform vec3 uEnvWall; uniform vec3 uEnvCeil;",
+    "uniform vec3 uPanelInt; uniform vec3 uPanelAz; uniform vec3 uPanelSize;",
+    "vec3 panelDir(float az, float el){",
+    "  return vec3(cos(el) * cos(az), sin(el), cos(el) * sin(az));",
+    "}",
+    "// rectangular softbox seen from the origin: gnomonic projection of the",
+    "// view direction onto the panel plane, soft-edged box in that plane",
+    "float rectPanel(vec3 d, vec3 C, float wa, float wb, float soft){",
+    "  float dc = dot(d, C);",
+    "  vec3 A = normalize(cross(vec3(0.0, 1.0, 0.0), C));",
+    "  vec3 B = cross(C, A);",
+    "  float u = dot(d, A) / max(dc, 1e-3);",
+    "  float v = dot(d, B) / max(dc, 1e-3);",
+    "  float ra = 1.0 - smoothstep(wa - soft, wa + soft, abs(u));",
+    "  float rb = 1.0 - smoothstep(wb - soft, wb + soft, abs(v));",
+    "  return step(0.001, dc) * ra * rb;",
+    "}",
+    "// wrap-diffuse irradiance from the three panels: real light on the subject;",
+    "// sh carries each panel's shadow term so blocked light actually goes dark",
+    "vec3 panelIrradiance(vec3 N, vec3 sh){",
+    "  float az = atan(uSunDir.z, uSunDir.x);",
+    "  vec3 pcol = vec3(1.0, 0.99, 0.96);",
+    "  float w = 0.45;",
+    "  vec3 sum = vec3(0.0);",
+    "  sum += pcol * sh.x * uPanelInt.x * uPanelSize.x * clamp((dot(N, panelDir(az + uPanelAz.x, 0.95)) + w) / (1.0 + w), 0.0, 1.0);",
+    "  sum += pcol * sh.y * uPanelInt.y * uPanelSize.y * clamp((dot(N, panelDir(az + uPanelAz.y, 0.60)) + w) / (1.0 + w), 0.0, 1.0);",
+    "  sum += pcol * sh.z * uPanelInt.z * uPanelSize.z * clamp((dot(N, panelDir(az + uPanelAz.z, 0.45)) + w) / (1.0 + w), 0.0, 1.0);",
+    "  return sum * 0.30;",
+    "}",
+    "// broad area-light specular so the panels visibly wrap around the subject",
+    "vec3 panelSpec(vec3 N, vec3 V, float rough, vec3 sh){",
+    "  float az = atan(uSunDir.z, uSunDir.x);",
+    "  vec3 pcol = vec3(1.0, 0.99, 0.96);",
+    "  float e = mix(90.0, 6.0, clamp(rough, 0.0, 1.0));",
+    "  vec3 sum = vec3(0.0);",
+    "  vec3 L; vec3 H;",
+    "  L = panelDir(az + uPanelAz.x, 0.95); H = normalize(L + V);",
+    "  sum += pcol * sh.x * uPanelInt.x * uPanelSize.x * pow(max(dot(N, H), 0.0), e);",
+    "  L = panelDir(az + uPanelAz.y, 0.60); H = normalize(L + V);",
+    "  sum += pcol * sh.y * uPanelInt.y * uPanelSize.y * pow(max(dot(N, H), 0.0), e);",
+    "  L = panelDir(az + uPanelAz.z, 0.45); H = normalize(L + V);",
+    "  sum += pcol * sh.z * uPanelInt.z * uPanelSize.z * pow(max(dot(N, H), 0.0), e);",
+    "  return sum * (e + 2.0) * 0.008;",
+    "}",
+    "vec3 studioEnv(vec3 d, float rough){",
+    "  vec3 col = mix(uEnvFloor, uEnvWall, smoothstep(-0.60, 0.08, d.y));",
+    "  col = mix(col, uEnvCeil, smoothstep(0.12, 0.80, d.y));",
+    "  float spread = mix(240.0, 3.0, clamp(rough, 0.0, 1.0));",
+    "  float keep = 1.0 - rough * 0.45;",
+    "  vec3 key = normalize(uSunDir);",
+    "  col += uSunColor * 0.50 * pow(max(dot(d, key), 0.0), spread) * keep;",
+    "  vec3 fill = normalize(vec3(-key.x, 0.55, -key.z));",
+    "  col += uEnvCeil * 1.4 * pow(max(dot(d, fill), 0.0), spread * 0.25 + 2.0) * keep;",
+    "  // broad soft pool where the key light washes the backdrop wall",
+    "  vec3 wallHit = normalize(vec3(-key.x, 0.12, -key.z));",
+    "  col += uSunColor * 0.035 * pow(max(dot(d, wallHit), 0.0), 8.0);",
+    "  // three rectangular studio panels riding the sun rig; their edges",
+    "  // blur with surface roughness exactly like real area lights",
+    "  float az = atan(key.z, key.x);",
+    "  float psoft = 0.035 + rough * 0.45;",
+    "  vec3 pcol = vec3(1.0, 0.99, 0.96);",
+    "  col += pcol * uPanelInt.x * rectPanel(d, panelDir(az + uPanelAz.x, 0.95), 0.55 * uPanelSize.x, 0.30 * uPanelSize.x, psoft) * keep;",
+    "  col += pcol * uPanelInt.y * rectPanel(d, panelDir(az + uPanelAz.y, 0.60), 0.40 * uPanelSize.y, 0.22 * uPanelSize.y, psoft) * keep;",
+    "  col += pcol * uPanelInt.z * rectPanel(d, panelDir(az + uPanelAz.z, 0.45), 0.65 * uPanelSize.z, 0.14 * uPanelSize.z, psoft) * keep;",
+    "  return col;",
+    "}"
+  ].join("\n");
+
+  // PCSS: percentage-closer soft shadows -> contact-hardening AREA shadows.
+  // Blocker search estimates average occluder depth; penumbra width grows
+  // with receiver-blocker separation, exactly like a physical area light.
+  var GLSL_PCSS=[
+    "uniform sampler2D tShadow;",
+    "uniform mat4 uLightVP;",
+    "uniform float uLightSize;",
+    "void poissonDisk(out vec2 P[16]){",
+    "  P[0]=vec2(-0.94201624,-0.39906216); P[1]=vec2( 0.94558609,-0.76890725);",
+    "  P[2]=vec2(-0.09418410,-0.92938870); P[3]=vec2( 0.34495938, 0.29387760);",
+    "  P[4]=vec2(-0.91588581, 0.45771432); P[5]=vec2(-0.81544232,-0.87912464);",
+    "  P[6]=vec2(-0.38277543, 0.27676845); P[7]=vec2( 0.97484398, 0.75648379);",
+    "  P[8]=vec2( 0.44323325,-0.97511554); P[9]=vec2( 0.53742981,-0.47373420);",
+    "  P[10]=vec2(-0.26496911,-0.41893023);P[11]=vec2( 0.79197514, 0.19090188);",
+    "  P[12]=vec2(-0.24188840, 0.99706507);P[13]=vec2(-0.81409955, 0.91437590);",
+    "  P[14]=vec2( 0.19984126, 0.78641367);P[15]=vec2( 0.14383161,-0.14100790);",
+    "}",
+    "float shadowPCSS(vec3 wp, float ndl){",
+    "  vec4 lp = uLightVP * vec4(wp, 1.0);",
+    "  vec3 s = lp.xyz / lp.w * 0.5 + 0.5;",
+    "  // uniform control flow: no early returns before texture fetches,",
+    "  // out-of-bounds handled by a select at the end (avoids X3595)",
+    "  float inB = step(0.0, s.x) * step(s.x, 1.0) * step(0.0, s.y) * step(s.y, 1.0) * step(s.z, 1.0);",
+    "  s.xy = clamp(s.xy, 0.001, 0.999);",
+    "  float bias = max(0.0022 * (1.0 - ndl), 0.0008);",
+    "  float zR = s.z - bias;",
+    "  vec2 P[16]; poissonDisk(P);",
+    "  // per-pixel rotated disk: trades banding for noise the eye reads as softness",
+    "  float ra = 6.2831853 * ign(gl_FragCoord.xy);",
+    "  mat2 RM = mat2(cos(ra), -sin(ra), sin(ra), cos(ra));",
+    "  // --- blocker search (full 16 taps) ---",
+    "  float search = 0.005 + uLightSize * 0.018;",
+    "  float bSum = 0.0; float bCnt = 0.0;",
+    "  for(int i = 0; i < 16; i++){",
+    "    float d = unpackDepthRGBA(texture2D(tShadow, s.xy + (RM * P[i]) * search));",
+    "    float hit = step(d, zR);",
+    "    bSum += d * hit; bCnt += hit;",
+    "  }",
+    "  float zB = bSum / max(bCnt, 1.0);",
+    "  // --- penumbra from receiver-blocker separation (area light) ---",
+    "  float pen = clamp((zR - zB) * (3.0 + uLightSize * 85.0), 0.0010, 0.050);",
+    "  float sh = 0.0;",
+    "  for(int i = 0; i < 16; i++){",
+    "    float d = unpackDepthRGBA(texture2D(tShadow, s.xy + (RM * P[i]) * pen));",
+    "    sh += step(zR, d);",
+    "  }",
+    "  sh /= 16.0;",
+    "  float lit = mix(sh, 1.0, step(bCnt, 0.5));   // no blockers -> fully lit",
+    "  return mix(1.0, lit, inB);",
+    "}"
+  ].join("\n");
+
+  // Per-panel area shadows: one depth map per panel, filtered with a wide
+  // rotated Poisson disk whose radius grows with the panel's size slider —
+  // bigger softbox, softer shadow. Cheaper than full PCSS (panels are so
+  // large their shadows are penumbra almost everywhere anyway).
+  var GLSL_PSHADOW=[
+    "uniform sampler2D tPanelSh0; uniform sampler2D tPanelSh1; uniform sampler2D tPanelSh2;",
+    "uniform mat4 uPanelVP0; uniform mat4 uPanelVP1; uniform mat4 uPanelVP2;",
+    "float shadowSoftMap(sampler2D map, mat4 VP, vec3 wp, float radius){",
+    "  vec4 lp = VP * vec4(wp, 1.0);",
+    "  vec3 s = lp.xyz / lp.w * 0.5 + 0.5;",
+    "  float inB = step(0.0, s.x) * step(s.x, 1.0) * step(0.0, s.y) * step(s.y, 1.0) * step(s.z, 1.0);",
+    "  s.xy = clamp(s.xy, 0.001, 0.999);",
+    "  float zR = s.z - 0.0035;",
+    "  vec2 P[16]; poissonDisk(P);",
+    "  float ra = 6.2831853 * ign(gl_FragCoord.xy + 31.0);",
+    "  mat2 RM = mat2(cos(ra), -sin(ra), sin(ra), cos(ra));",
+    "  float sh = 0.0;",
+    "  for(int i = 0; i < 12; i++){",
+    "    float d = unpackDepthRGBA(texture2D(map, s.xy + (RM * P[i]) * radius));",
+    "    sh += step(zR, d);",
+    "  }",
+    "  sh /= 12.0;",
+    "  return mix(1.0, sh, inB);",
+    "}",
+    "vec3 panelShadows(vec3 wp){",
+    "  return vec3(",
+    "    shadowSoftMap(tPanelSh0, uPanelVP0, wp, 0.006 + uPanelSize.x * 0.010),",
+    "    shadowSoftMap(tPanelSh1, uPanelVP1, wp, 0.006 + uPanelSize.y * 0.010),",
+    "    shadowSoftMap(tPanelSh2, uPanelVP2, wp, 0.006 + uPanelSize.z * 0.010));",
+    "}"
+  ].join("\n");
+
+  // ============================================================
+  // Sculpture shader: anisotropic GGX PBR + PCSS self-shadowing
+  // (outputs LINEAR HDR; tone mapping happens in the composite)
+  // ============================================================
+  var SCULPT_VERT=[
+    "attribute vec3 tangent;",
+    "attribute float ao;",
+    "varying vec3 vN; varying vec3 vT; varying vec3 vWP;",
+    "varying vec2 vUv; varying float vAO;",
+    "void main(){",
+    "  vN = normalize(mat3(modelMatrix) * normal);",
+    "  vT = normalize(mat3(modelMatrix) * tangent);",
+    "  vec4 wp = modelMatrix * vec4(position, 1.0);",
+    "  vWP = wp.xyz; vUv = uv; vAO = ao;",
+    "  gl_Position = projectionMatrix * viewMatrix * wp;",
+    "}"
+  ].join("\n");
+
+  var SCULPT_FRAG=[
+    "precision highp float;",
+    GLSL_COMMON,
+    "varying vec3 vN; varying vec3 vT; varying vec3 vWP;",
+    "varying vec2 vUv; varying float vAO;",
+    "uniform vec3 uBaseColor; uniform float uMetal; uniform float uRough; uniform float uAniso;",
+    "uniform float uAO;",
+    "uniform vec3 uSunDir; uniform vec3 uSunColor;",
+    "uniform vec3 uSkyCol; uniform vec3 uGroundCol;",
+    "uniform float uUseMap; uniform sampler2D uMap;",
+    GLSL_ENV,
+    GLSL_PCSS,
+    GLSL_PSHADOW,
+    "float D_GGX_Aniso(float TdotH, float BdotH, float NdotH, float at, float ab){",
+    "  float a2 = at * ab;",
+    "  vec3 v = vec3(ab * TdotH, at * BdotH, a2 * NdotH);",
+    "  float v2 = dot(v, v);",
+    "  float w2 = a2 / max(v2, 1e-7);",
+    "  return a2 * w2 * w2 * (1.0 / PI);",
+    "}",
+    "float V_Smith_Aniso(float TdotV, float BdotV, float NdotV,",
+    "                    float TdotL, float BdotL, float NdotL, float at, float ab){",
+    "  float lambdaV = NdotL * length(vec3(at * TdotV, ab * BdotV, NdotV));",
+    "  float lambdaL = NdotV * length(vec3(at * TdotL, ab * BdotL, NdotL));",
+    "  return 0.5 / max(lambdaV + lambdaL, 1e-5);",
+    "}",
+    "vec3 F_Schlick(vec3 f0, float VdotH){",
+    "  return f0 + (vec3(1.0) - f0) * pow(1.0 - VdotH, 5.0);",
+    "}",
+    "vec3 envRadiance(vec3 d, float rough){ return studioEnv(d, rough); }",
+    "void main(){",
+    "  float aoV = 1.0 - vAO * uAO * 0.85;   // occlusion strength applied live",
+    "  vec3 N = normalize(vN);",
+    "  vec3 T = normalize(vT - N * dot(vT, N));",
+    "  vec3 B = normalize(cross(N, T));",
+    "  vec3 V = normalize(cameraPosition - vWP);",
+    "  vec3 albedo = uBaseColor;",
+    "  float rough = uRough;",
+    "  if(uUseMap > 0.5){",
+    "    vec3 tex = pow(texture2D(uMap, vUv).rgb, vec3(2.2));",
+    "    albedo *= tex * 2.0;",
+    "    float lum = dot(tex, vec3(0.299, 0.587, 0.114));",
+    "    rough = clamp(rough + (0.5 - lum) * 0.25, 0.05, 1.0);",
+    "  }",
+    "  float r = clamp(rough, 0.045, 1.0);",
+    "  float a = r * r;",
+    "  float at = max(a * (1.0 + uAniso), 1e-3);",
+    "  float ab = max(a * (1.0 - uAniso), 1e-3);",
+    "  vec3 f0 = mix(vec3(0.04), albedo, uMetal);",
+    "  vec3 L = normalize(uSunDir);",
+    "  float NdotL = max(dot(N, L), 0.0);",
+    "  vec3 col = vec3(0.0);",
+    "  if(NdotL > 0.0){",
+    "    float shadow = shadowPCSS(vWP, NdotL);   // area self-shadowing",
+    "    vec3 H = normalize(V + L);",
+    "    float NdotV = max(dot(N, V), 1e-4);",
+    "    float D = D_GGX_Aniso(dot(T,H), dot(B,H), max(dot(N,H),0.0), at, ab);",
+    "    float Vis = V_Smith_Aniso(dot(T,V), dot(B,V), NdotV, dot(T,L), dot(B,L), NdotL, at, ab);",
+    "    vec3 F = F_Schlick(f0, max(dot(V,H),0.0));",
+    "    vec3 kd = (vec3(1.0) - F) * (1.0 - uMetal);",
+    "    col += (kd * albedo / PI + D * Vis * F) * uSunColor * NdotL * shadow;",
+    "  }",
+    "  vec3 irr = mix(uGroundCol, uSkyCol, N.y * 0.5 + 0.5);",
+    "  col += irr * albedo * (1.0 - uMetal) * 0.55 * aoV;",
+    "  // direct wrap-diffuse from the three studio panels, each self-shadowed",
+    "  vec3 psh = panelShadows(vWP);",
+    "  col += panelIrradiance(N, psh) * albedo * (1.0 - uMetal) * aoV;",
+    "  // floor bounce: undersides receive light reflected off the studio floor,",
+    "  // so the planar reflection shows a lit surface, not a black silhouette",
+    "  float sunLum = dot(uSunColor, vec3(0.2126, 0.7152, 0.0722));",
+    "  col += uGroundCol * albedo * (1.0 - uMetal) * 0.20 * sunLum * max(-N.y, 0.0) * aoV;",
+    "  vec3 Rv = reflect(-V, N);",
+    "  float NdotV2 = max(dot(N, V), 1e-4);",
+    "  vec3 Fenv = f0 + (max(vec3(1.0 - r), f0) - f0) * pow(1.0 - NdotV2, 5.0);",
+    "  float horizon = clamp(1.0 + Rv.y * 0.5, 0.35, 1.0);   // downward reflections see the bright floor",
+    "  col += envRadiance(Rv, r) * Fenv * horizon * aoV;",
+    "  col += panelSpec(N, V, r, psh) * mix(vec3(0.08), albedo, uMetal) * aoV;",
+    "  col *= mix(0.55, 1.0, aoV);",
+    "  gl_FragColor = vec4(col, 1.0);   // linear HDR out",
+    "}"
+  ].join("\n");
+
+  // ============================================================
+  // Floor shader: physically-based matte-satin studio floor with
+  // Fresnel-weighted planar reflection + PCSS area shadow
+  // ============================================================
+  var FLOOR_VERT=[
+    "varying vec3 vWP;",
+    "void main(){",
+    "  vec4 wp = modelMatrix * vec4(position, 1.0);",
+    "  vWP = wp.xyz;",
+    "  gl_Position = projectionMatrix * viewMatrix * wp;",
+    "}"
+  ].join("\n");
+
+  var FLOOR_FRAG=[
+    "precision highp float;",
+    GLSL_COMMON,
+    "varying vec3 vWP;",
+    "uniform vec3 uFloorColor;",
+    "uniform vec3 uSunDir; uniform vec3 uSunColor;",
+    "uniform vec3 uSkyCol; uniform vec3 uGroundCol;",
+    "uniform sampler2D tMirror; uniform mat4 uMirrorMatrix;",
+    "uniform float uGloss;",
+    GLSL_ENV,
+    GLSL_PCSS,
+    GLSL_PSHADOW,
+    "float vnoise(vec2 p){",
+    "  vec2 i = floor(p); vec2 f = fract(p);",
+    "  f = f * f * (3.0 - 2.0 * f);",
+    "  float a = fract(sin(dot(i, vec2(127.1, 311.7))) * 43758.5453);",
+    "  float b = fract(sin(dot(i + vec2(1.0, 0.0), vec2(127.1, 311.7))) * 43758.5453);",
+    "  float c = fract(sin(dot(i + vec2(0.0, 1.0), vec2(127.1, 311.7))) * 43758.5453);",
+    "  float d = fract(sin(dot(i + vec2(1.0, 1.0), vec2(127.1, 311.7))) * 43758.5453);",
+    "  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);",
+    "}",
+    "void main(){",
+    "  vec3 N = vec3(0.0, 1.0, 0.0);",
+    "  vec3 V = normalize(cameraPosition - vWP);",
+    "  float NdotV = max(dot(N, V), 1e-4);",
+    "  // subtle physical surface variation (seamless studio cyclorama)",
+    "  float tone = 0.96 + 0.04 * vnoise(vWP.xz * 0.15);",
+    "  vec3 albedo = uFloorColor * tone;",
+    "  float rough = mix(0.50, 0.06, uGloss);",
+    "  vec3 L = normalize(uSunDir);",
+    "  float NdotL = max(dot(N, L), 0.0);",
+    "  float shadow = shadowPCSS(vWP, NdotL);   // contact-hardening area shadow",
+    "  vec3 col = albedo / PI * uSunColor * NdotL * shadow;",
+    "  // hemispherical ambient sampled from the studio itself",
+    "  col += studioEnv(vec3(0.0, 1.0, 0.0), 1.0) * albedo * 0.85;",
+    "  // light pools the panels throw onto the floor, cut by their shadows",
+    "  vec3 psh = panelShadows(vWP);",
+    "  col += panelIrradiance(N, psh) * albedo * 0.55;",
+    "  // --- glossy planar reflection: for a plane the mirror render IS the",
+    "  //     exact reflected ray, so this is a true one-bounce raytrace;",
+    "  //     roughness resolves it with a rotated Poisson cone, stretched",
+    "  //     vertically the way glossy floor reflections streak in reality ---",
+    "  vec4 mp = uMirrorMatrix * vec4(vWP, 1.0);",
+    "  vec2 muv = mp.xy / mp.w;",
+    "  vec3 Rv = reflect(-V, N);",
+    "  vec2 P[16]; poissonDisk(P);",
+    "  float ra2 = 6.2831853 * ign(gl_FragCoord.xy + 17.0);",
+    "  mat2 RM2 = mat2(cos(ra2), -sin(ra2), sin(ra2), cos(ra2));",
+    "  float blur = mix(0.028, 0.0012, uGloss);",
+    "  vec3 refl = vec3(0.0);",
+    "  for(int i = 0; i < 12; i++){",
+    "    vec2 off = (RM2 * P[i]) * vec2(0.45, 1.0) * blur;",
+    "    refl += texture2D(tMirror, clamp(muv + off, 0.002, 0.998)).rgb;",
+    "  }",
+    "  refl /= 12.0;",
+    "  // rays that leave the mirror buffer fall back to the same studio env",
+    "  float inMuv = step(0.0, muv.x) * step(muv.x, 1.0) * step(0.0, muv.y) * step(muv.y, 1.0);",
+    "  refl = mix(studioEnv(Rv, rough), refl, inMuv);",
+    "  // the area shadow also dims the reflection — grounds the contact",
+    "  refl *= mix(0.75, 1.0, shadow);",
+    "  float f0 = 0.04;",
+    "  float F = f0 + (1.0 - f0) * pow(1.0 - NdotV, 5.0);",
+    "  // visible mirror component even at steeper view angles when glossy",
+    "  // keep a solid mirror floor from any camera height, not only grazing",
+    "  float reflAmt = clamp(uGloss * (0.45 + F * 2.2) + F * 0.25, 0.0, 0.95);",
+    "  col = mix(col, refl, reflAmt);",
+    "  gl_FragColor = vec4(col, 1.0);   // linear HDR out",
+    "}"
+  ].join("\n");
+
+  // ============================================================
+  // Volumetric composite: fullscreen raymarch through the sun's
+  // shadow map -> single-scattering light shafts with volumetric
+  // shadows; then ACES + sRGB for final output
+  // ============================================================
+  var COMP_VERT=[
+    "varying vec2 vUv;",
+    "void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }"
+  ].join("\n");
+
+  var COMP_FRAG=[
+    "precision highp float;",
+    "#define STEPS_N 40",
+    "#define VOL_PANELS 1",
+    GLSL_COMMON,
+    "varying vec2 vUv;",
+    "uniform sampler2D tScene; uniform sampler2D tDepth;",
+    "uniform sampler2D tShadow; uniform mat4 uLightVP;",
+    "uniform mat4 uInvProjView; uniform vec3 uCamPos;",
+    "uniform vec3 uSunDir; uniform vec3 uSunColor;",
+    "uniform float uDensity;",
+    "uniform sampler2D tPanelSh0; uniform sampler2D tPanelSh1; uniform sampler2D tPanelSh2;",
+    "uniform mat4 uPanelVP0; uniform mat4 uPanelVP1; uniform mat4 uPanelVP2;",
+    "uniform vec3 uPanelInt; uniform vec3 uPanelAz;",
+    "vec3 worldFromDepth(vec2 uv, float d){",
+    "  vec4 ndc = vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);",
+    "  vec4 wp = uInvProjView * ndc;",
+    "  return wp.xyz / wp.w;",
+    "}",
+    "float lightVisible(vec3 wp){",
+    "  vec4 lp = uLightVP * vec4(wp, 1.0);",
+    "  vec3 s = lp.xyz / lp.w * 0.5 + 0.5;",
+    "  float inB = step(0.0, s.x) * step(s.x, 1.0) * step(0.0, s.y) * step(s.y, 1.0) * step(s.z, 1.0);",
+    "  float d = unpackDepthRGBA(texture2D(tShadow, clamp(s.xy, 0.001, 0.999)));",
+    "  float vis = step(s.z - 0.002, d);",
+    "  return mix(1.0, vis, inB);",
+    "}",
+    "float lightVisMap(sampler2D map, mat4 VP, vec3 wp){",
+    "  vec4 lp = VP * vec4(wp, 1.0);",
+    "  vec3 s = lp.xyz / lp.w * 0.5 + 0.5;",
+    "  float inB = step(0.0, s.x) * step(s.x, 1.0) * step(0.0, s.y) * step(s.y, 1.0) * step(s.z, 1.0);",
+    "  float d = unpackDepthRGBA(texture2D(map, clamp(s.xy, 0.001, 0.999)));",
+    "  return mix(1.0, step(s.z - 0.003, d), inB);",
+    "}",
+    "vec3 pDir(float az, float el){ return vec3(cos(el) * cos(az), sin(el), cos(el) * sin(az)); }",
+    "float HG(float mu, float g){ return (1.0 - g * g) / (4.0 * PI * pow(1.0 + g * g - 2.0 * g * mu, 1.5)); }",
+    "void main(){",
+    "  vec3 sceneCol = texture2D(tScene, vUv).rgb;",
+    "  float depth = texture2D(tDepth, vUv).x;",
+    "  vec3 wp = worldFromDepth(vUv, depth);",
+    "  vec3 ro = uCamPos;",
+    "  vec3 rd = wp - ro;",
+    "  float len = min(length(rd), 300.0);",
+    "  rd = normalize(rd);",
+    "  const int STEPS = STEPS_N;",
+    "  float stepLen = len / float(STEPS);",
+    "  // interleaved-gradient jitter kills banding",
+    "  float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));",
+    "  float t = stepLen * jitter;",
+    "  // Henyey-Greenstein forward-scattering phase",
+    "  float mu = dot(rd, normalize(uSunDir));",
+    "  float g = 0.45;",
+    "  float phase = (1.0 - g * g) / (4.0 * PI * pow(1.0 + g * g - 2.0 * g * mu, 1.5));",
+    "  // panel directions + forward-scattering phase per panel",
+    "  float azP = atan(uSunDir.z, uSunDir.x);",
+    "  vec3 pd0 = pDir(azP + uPanelAz.x, 0.95);",
+    "  vec3 pd1 = pDir(azP + uPanelAz.y, 0.60);",
+    "  vec3 pd2 = pDir(azP + uPanelAz.z, 0.45);",
+    "  vec3 phP = vec3(HG(dot(rd, pd0), 0.3), HG(dot(rd, pd1), 0.3), HG(dot(rd, pd2), 0.3));",
+    "  vec3 scP = vec3(0.0);",
+    "  float scatter = 0.0;",
+    "  float trans = 1.0;",
+    "  for(int i = 0; i < STEPS; i++){",
+    "    vec3 p = ro + rd * t;",
+    "    float heightFall = exp(-max(p.y + 30.0, 0.0) * 0.022);   // haze pools near the floor",
+    "    float dens = uDensity * 0.010 * heightFall;",
+    "    float vis = lightVisible(p);   // volumetric shadowing of the medium",
+    "    scatter += vis * dens * stepLen * trans;",
+    "#if VOL_PANELS",
+    "    // panels shadow the haze too: each panel's shafts get cut by the sculpture",
+    "    scP += vec3(lightVisMap(tPanelSh0, uPanelVP0, p),",
+    "                lightVisMap(tPanelSh1, uPanelVP1, p),",
+    "                lightVisMap(tPanelSh2, uPanelVP2, p)) * dens * stepLen * trans;",
+    "#endif",
+    "    trans *= exp(-dens * stepLen * 0.7);",
+    "    t += stepLen;",
+    "  }",
+    "  vec3 inscatter = uSunColor * phase * scatter * 3.0;",
+    "  inscatter += vec3(1.0, 0.99, 0.96) * dot(uPanelInt * phP, scP) * 2.0;",
+    "  vec3 col = sceneCol * mix(1.0, trans, 0.75) + inscatter;",
+    "  col = ACES(col * 1.05);",
+    "  col = pow(col, vec3(1.0 / 2.2));",
+    "  gl_FragColor = vec4(col, 1.0);",
+    "}"
+  ].join("\n");
+
+  // ============================================================
+  // FXAA 3.11 (compact) — final antialiasing pass on the LDR image
+  // ============================================================
+  var FXAA_FRAG=[
+    "precision highp float;",
+    "varying vec2 vUv;",
+    "uniform sampler2D tDiffuse;",
+    "uniform vec2 uInvRes;",
+    "#define FXAA_REDUCE_MIN (1.0/128.0)",
+    "#define FXAA_REDUCE_MUL (1.0/8.0)",
+    "#define FXAA_SPAN_MAX 8.0",
+    "void main(){",
+    "  vec3 rgbNW = texture2D(tDiffuse, vUv + vec2(-1.0,-1.0) * uInvRes).rgb;",
+    "  vec3 rgbNE = texture2D(tDiffuse, vUv + vec2( 1.0,-1.0) * uInvRes).rgb;",
+    "  vec3 rgbSW = texture2D(tDiffuse, vUv + vec2(-1.0, 1.0) * uInvRes).rgb;",
+    "  vec3 rgbSE = texture2D(tDiffuse, vUv + vec2( 1.0, 1.0) * uInvRes).rgb;",
+    "  vec3 rgbM  = texture2D(tDiffuse, vUv).rgb;",
+    "  vec3 luma = vec3(0.299, 0.587, 0.114);",
+    "  float lumaNW = dot(rgbNW, luma);",
+    "  float lumaNE = dot(rgbNE, luma);",
+    "  float lumaSW = dot(rgbSW, luma);",
+    "  float lumaSE = dot(rgbSE, luma);",
+    "  float lumaM  = dot(rgbM,  luma);",
+    "  float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));",
+    "  float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));",
+    "  vec2 dir;",
+    "  dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));",
+    "  dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));",
+    "  float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * (0.25 * FXAA_REDUCE_MUL), FXAA_REDUCE_MIN);",
+    "  float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);",
+    "  dir = min(vec2(FXAA_SPAN_MAX), max(vec2(-FXAA_SPAN_MAX), dir * rcpDirMin)) * uInvRes;",
+    "  vec3 rgbA = 0.5 * (",
+    "    texture2D(tDiffuse, vUv + dir * (1.0/3.0 - 0.5)).rgb +",
+    "    texture2D(tDiffuse, vUv + dir * (2.0/3.0 - 0.5)).rgb);",
+    "  vec3 rgbB = rgbA * 0.5 + 0.25 * (",
+    "    texture2D(tDiffuse, vUv + dir * -0.5).rgb +",
+    "    texture2D(tDiffuse, vUv + dir *  0.5).rgb);",
+    "  float lumaB = dot(rgbB, luma);",
+    "  if((lumaB < lumaMin) || (lumaB > lumaMax)){",
+    "    gl_FragColor = vec4(rgbA, 1.0);",
+    "  } else {",
+    "    gl_FragColor = vec4(rgbB, 1.0);",
+    "  }",
+    "}"
+  ].join("\n");
+
+  // ============================================================
+  // Renderer + passes
+  // ============================================================
+  var container=document.getElementById("scene");
+  var renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  renderer.toneMapping=THREE.NoToneMapping;   // done in composite shader
+  container.appendChild(renderer.domElement);
+
+  var scene=new THREE.Scene();
+  scene.background=new THREE.Color("#e9e2d4").convertSRGBToLinear();
+  var camera=new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,1200);
+
+  var GROUND_Y=-30;
+  var GROUND_COL=new THREE.Color(0.72,0.67,0.58), SKY_COL=new THREE.Color(0.62,0.66,0.74);
+  var ENV_FLOOR=new THREE.Color(), ENV_WALL=new THREE.Color(), ENV_CEIL=new THREE.Color();
+  var PANEL_INT=new THREE.Vector3(), PANEL_AZ=new THREE.Vector3(), PANEL_SIZE=new THREE.Vector3();
+  var SUN_DIR=new THREE.Vector3(), SUN_COLOR=new THREE.Color();
+  var LIGHT_VP=new THREE.Matrix4();
+
+  var params={loops:9000,width:0.75,depth:0.35,bevel:0.12,facets:3,clear:0.30,polish:0.45,
+              aniso:0.6,sun:1.3,angle:130,soft:0.5,haze:0.35,gloss:0.55,ao:0.65,rot:1.5,tint:0.75,
+              p1:1.6,p2:0.9,p3:0.7,p1az:0,p2az:132,p3az:-115,p1sz:1,p2sz:1,p3sz:1};
+
+  // Quality presets: supersampling, shadow map sizes, mirror resolution,
+  // volumetric step count, and whether panels shadow the haze
+  var QUALITY={
+    low: {ss:1.0, cap:1.0, sun:1024, panel:256,  mirrorDiv:4, steps:16, volPanels:false},
+    med: {ss:1.0, cap:2.0, sun:2048, panel:512,  mirrorDiv:2, steps:28, volPanels:true},
+    high:{ss:1.5, cap:2.5, sun:2048, panel:1024, mirrorDiv:2, steps:40, volPanels:true}
+  };
+  var quality="high";
+
+  // Studio palette: tint blends the warm gallery toward the chosen backdrop.
+  var PAL={warm:{floor:"#ded5c2",wall:"#e9e2d4",ceil:"#f4efe4"}};
+  // Backdrop colorways: floor / wall / ceiling of the cyclorama
+  var BACKDROPS={
+    "Teal":    {floor:"#33747f",wall:"#256069",ceil:"#79aeb5"},
+    "Ivory":   {floor:"#d8cdb6",wall:"#c9bda4",ceil:"#efe8d8"},
+    "Slate":   {floor:"#5a6570",wall:"#46505a",ceil:"#97a2ad"},
+    "Charcoal":{floor:"#3a3d42",wall:"#2b2e33",ceil:"#6a6f76"},
+    "Sage":    {floor:"#7d8b72",wall:"#66755c",ceil:"#b0bda6"},
+    "Blush":   {floor:"#c49a94",wall:"#ab7f79",ceil:"#e3c4bf"},
+    "Sky":     {floor:"#7fa3c0",wall:"#6289a9",ceil:"#b7d0e3"},
+    "Plum":    {floor:"#6e5a71",wall:"#57455a",ceil:"#a390a6"}
+  };
+  var backdropName="Teal";
+  var _c1=new THREE.Color(), _c2=new THREE.Color();
+  function lerpCol(target,a,b,t){
+    _c1.set(a);_c2.set(b);
+    target.copy(_c1.lerp(_c2,t)).convertSRGBToLinear();
+  }
+  function updateEnv(){
+    var t=params.tint;
+    var bd=BACKDROPS[backdropName];
+    lerpCol(ENV_FLOOR,PAL.warm.floor,bd.floor,t);
+    lerpCol(ENV_WALL, PAL.warm.wall, bd.wall, t);
+    lerpCol(ENV_CEIL, PAL.warm.ceil, bd.ceil, t);
+    GROUND_COL.copy(ENV_FLOOR);
+    SKY_COL.copy(ENV_CEIL);
+    PANEL_INT.set(params.p1,params.p2,params.p3);
+    var D2R=Math.PI/180;
+    PANEL_AZ.set(params.p1az*D2R,params.p2az*D2R,params.p3az*D2R);
+    PANEL_SIZE.set(params.p1sz,params.p2sz,params.p3sz);
+  }
+  updateEnv();
+
+  // --- render targets ---
+  function rtSize(){
+    // supersample above canvas resolution; the final FXAA pass resolves back
+    // down, which kills the ribbon moiré that FXAA alone cannot touch
+    var q=QUALITY[quality];
+    var scale=Math.min((window.devicePixelRatio||1)*q.ss,q.cap);
+    return {w:Math.floor(window.innerWidth*scale), h:Math.floor(window.innerHeight*scale)};
+  }
+  var SHADOW_RES=2048;
+  var shadowRT=new THREE.WebGLRenderTarget(SHADOW_RES,SHADOW_RES,
+    {minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
+  var depthMat=new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking});
+
+  // one depth map per studio panel so every light casts area + volumetric shadows
+  var PANEL_EL=[0.95,0.60,0.45];   // must match the elevations in GLSL_ENV
+  var panelShadowRTs=[],panelCams=[],
+      PANEL_VPS=[new THREE.Matrix4(),new THREE.Matrix4(),new THREE.Matrix4()];
+  for(var pi=0;pi<3;pi++){
+    panelShadowRTs.push(new THREE.WebGLRenderTarget(1024,1024,
+      {minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter}));
+    panelCams.push(new THREE.OrthographicCamera(-52,52,52,-52,20,340));
+  }
+  var _pd=new THREE.Vector3();
+  function updatePanelCams(){
+    var a=params.angle*Math.PI/180;
+    var offs=[params.p1az,params.p2az,params.p3az];
+    for(var i=0;i<3;i++){
+      var az=a+offs[i]*Math.PI/180, el=PANEL_EL[i];
+      _pd.set(Math.cos(el)*Math.cos(az),Math.sin(el),Math.cos(el)*Math.sin(az));
+      panelCams[i].position.copy(_pd).multiplyScalar(160);
+      panelCams[i].lookAt(0,GROUND_Y+16,0);
+      panelCams[i].updateMatrixWorld();
+      panelCams[i].updateProjectionMatrix();
+      PANEL_VPS[i].multiplyMatrices(panelCams[i].projectionMatrix,panelCams[i].matrixWorldInverse);
+    }
+  }
+
+  var sz=rtSize();
+  var mirrorRT=new THREE.WebGLRenderTarget(Math.floor(sz.w/2),Math.floor(sz.h/2),
+    {minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
+
+  var sceneDepthTex=new THREE.DepthTexture(sz.w,sz.h);
+  sceneDepthTex.type=THREE.UnsignedIntType;
+  var sceneRT=new THREE.WebGLRenderTarget(sz.w,sz.h,
+    {minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,
+     type:THREE.HalfFloatType,depthTexture:sceneDepthTex,depthBuffer:true});
+
+  // LDR buffer between composite and FXAA
+  var postRT=new THREE.WebGLRenderTarget(sz.w,sz.h,
+    {minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
+
+  // --- light camera (drives shadow map + volumetrics) ---
+  var lightCam=new THREE.OrthographicCamera(-52,52,52,-52,20,340);
+  scene.add(lightCam);
+  function updateLight(){
+    var a=params.angle*Math.PI/180;
+    SUN_DIR.set(Math.cos(a)*90,95,Math.sin(a)*90).normalize();
+    SUN_COLOR.setRGB(1.0,0.94,0.85).lerp(_c1.setRGB(0.96,0.99,1.0),params.tint*0.7).multiplyScalar(params.sun*2.4);
+    lightCam.position.copy(SUN_DIR).multiplyScalar(160);
+    lightCam.lookAt(0,GROUND_Y+16,0);
+    lightCam.updateMatrixWorld();
+    lightCam.updateProjectionMatrix();
+    LIGHT_VP.multiplyMatrices(lightCam.projectionMatrix,lightCam.matrixWorldInverse);
+  }
+
+  // --- mirror camera ---
+  var mirrorCam=new THREE.PerspectiveCamera();
+  var MIRROR_MTX=new THREE.Matrix4();
+  var lookTargetY=0;
+  var projView=new THREE.Matrix4();
+  function updateMirror(){
+    mirrorCam.fov=camera.fov;mirrorCam.aspect=camera.aspect;
+    mirrorCam.near=camera.near;mirrorCam.far=camera.far;
+    mirrorCam.position.set(camera.position.x, 2*GROUND_Y-camera.position.y, camera.position.z);
+    mirrorCam.up.set(0,-1,0);
+    mirrorCam.lookAt(0, 2*GROUND_Y-lookTargetY, 0);
+    mirrorCam.updateProjectionMatrix();
+    mirrorCam.updateMatrixWorld();
+    MIRROR_MTX.set(0.5,0,0,0.5, 0,0.5,0,0.5, 0,0,0.5,0.5, 0,0,0,1);
+    projView.multiplyMatrices(mirrorCam.projectionMatrix,mirrorCam.matrixWorldInverse);
+    MIRROR_MTX.multiply(projView);
+  }
+
+  // --- shared shadow uniforms factory ---
+  function shadowUniforms(){
+    return {
+      tShadow:{value:shadowRT.texture},
+      uLightVP:{value:LIGHT_VP},
+      uLightSize:{value:params.soft},
+      tPanelSh0:{value:panelShadowRTs[0].texture},
+      tPanelSh1:{value:panelShadowRTs[1].texture},
+      tPanelSh2:{value:panelShadowRTs[2].texture},
+      uPanelVP0:{value:PANEL_VPS[0]},
+      uPanelVP1:{value:PANEL_VPS[1]},
+      uPanelVP2:{value:PANEL_VPS[2]}
+    };
+  }
+
+  // --- floor ---
+  var floorMat=new THREE.ShaderMaterial({
+    vertexShader:FLOOR_VERT, fragmentShader:FLOOR_FRAG,
+    uniforms:Object.assign(shadowUniforms(),{
+      uFloorColor:{value:ENV_FLOOR},
+      uSunDir:{value:SUN_DIR}, uSunColor:{value:SUN_COLOR},
+      uSkyCol:{value:SKY_COL}, uGroundCol:{value:GROUND_COL},
+      uEnvFloor:{value:ENV_FLOOR}, uEnvWall:{value:ENV_WALL}, uEnvCeil:{value:ENV_CEIL},
+      uPanelInt:{value:PANEL_INT}, uPanelAz:{value:PANEL_AZ}, uPanelSize:{value:PANEL_SIZE},
+      tMirror:{value:mirrorRT.texture},
+      uMirrorMatrix:{value:MIRROR_MTX},
+      uGloss:{value:params.gloss}
+    })});
+  var floor=new THREE.Mesh(new THREE.PlaneGeometry(900,900),floorMat);
+  floor.rotation.x=-Math.PI/2;floor.position.y=GROUND_Y;
+  scene.add(floor);
+
+  // --- seamless cyclorama dome: the studio itself, rendered from the same
+  //     studioEnv the sculpture and floor sample, so direct view, glossy
+  //     reflections and ambient light all describe one consistent room ---
+  var DOME_FRAG=[
+    "precision highp float;",
+    "varying vec3 vWP;",
+    "uniform vec3 uSunDir; uniform vec3 uSunColor;",
+    GLSL_ENV,
+    "void main(){",
+    "  vec3 d = normalize(vWP - cameraPosition);",
+    "  vec3 col = studioEnv(d, 0.35);   // slightly rough: matte painted cyc",
+    "  gl_FragColor = vec4(col, 1.0);   // linear HDR out",
+    "}"
+  ].join("\n");
+  var domeMat=new THREE.ShaderMaterial({
+    vertexShader:FLOOR_VERT, fragmentShader:DOME_FRAG, side:THREE.BackSide,
+    uniforms:{
+      uEnvFloor:{value:ENV_FLOOR}, uEnvWall:{value:ENV_WALL}, uEnvCeil:{value:ENV_CEIL},
+      uPanelInt:{value:PANEL_INT}, uPanelAz:{value:PANEL_AZ}, uPanelSize:{value:PANEL_SIZE},
+      uSunDir:{value:SUN_DIR}, uSunColor:{value:SUN_COLOR}
+    }});
+  var dome=new THREE.Mesh(new THREE.SphereGeometry(560,48,32),domeMat);
+  dome.position.y=GROUND_Y;
+  scene.add(dome);
+
+  // --- composite pass ---
+  var compScene=new THREE.Scene();
+  var compCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+  var compMat=new THREE.ShaderMaterial({
+    vertexShader:COMP_VERT, fragmentShader:COMP_FRAG, depthTest:false, depthWrite:false,
+    uniforms:{
+      tScene:{value:sceneRT.texture},
+      tDepth:{value:sceneDepthTex},
+      tShadow:{value:shadowRT.texture},
+      uLightVP:{value:LIGHT_VP},
+      uInvProjView:{value:new THREE.Matrix4()},
+      uCamPos:{value:camera.position},
+      uSunDir:{value:SUN_DIR}, uSunColor:{value:SUN_COLOR},
+      uDensity:{value:params.haze},
+      tPanelSh0:{value:panelShadowRTs[0].texture},
+      tPanelSh1:{value:panelShadowRTs[1].texture},
+      tPanelSh2:{value:panelShadowRTs[2].texture},
+      uPanelVP0:{value:PANEL_VPS[0]},
+      uPanelVP1:{value:PANEL_VPS[1]},
+      uPanelVP2:{value:PANEL_VPS[2]},
+      uPanelInt:{value:PANEL_INT},
+      uPanelAz:{value:PANEL_AZ}
+    }});
+  compScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),compMat));
+
+  // --- FXAA pass ---
+  var fxaaScene=new THREE.Scene();
+  var fxaaMat=new THREE.ShaderMaterial({
+    vertexShader:COMP_VERT, fragmentShader:FXAA_FRAG, depthTest:false, depthWrite:false,
+    uniforms:{
+      tDiffuse:{value:postRT.texture},
+      uInvRes:{value:new THREE.Vector2(1/sz.w,1/sz.h)}
+    }});
+  fxaaScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),fxaaMat));
+
+  var pivot=new THREE.Group();scene.add(pivot);
+  var sculpture=null, statusEl=document.getElementById("status");
+
+  function buildMaterial(){
+    var spec=MATERIALS[matName], isWood=spec.kind==="wood";
+    var tex=isWood?makeWoodTextures(spec):null;
+    var rough=isWood?(0.85-params.polish*0.55):(spec.rough*(1-params.polish*0.5)+0.06);
+    var mat=new THREE.ShaderMaterial({
+      vertexShader:SCULPT_VERT, fragmentShader:SCULPT_FRAG,
+      uniforms:Object.assign(shadowUniforms(),{
+        uBaseColor:{value:isWood?new THREE.Color(1,1,1):new THREE.Color(spec.color).convertSRGBToLinear()},
+        uMetal:{value:isWood?0.0:1.0},
+        uAO:{value:params.ao},
+        uRough:{value:rough},
+        uAniso:{value:isWood?Math.min(params.aniso,0.3):params.aniso},
+        uSunDir:{value:SUN_DIR}, uSunColor:{value:SUN_COLOR},
+        uSkyCol:{value:SKY_COL}, uGroundCol:{value:GROUND_COL},
+        uEnvFloor:{value:ENV_FLOOR}, uEnvWall:{value:ENV_WALL}, uEnvCeil:{value:ENV_CEIL},
+        uPanelInt:{value:PANEL_INT}, uPanelAz:{value:PANEL_AZ}, uPanelSize:{value:PANEL_SIZE}, uPanelAz:{value:PANEL_AZ}, uPanelSize:{value:PANEL_SIZE},
+        uUseMap:{value:isWood?1.0:0.0},
+        uMap:{value:isWood?tex.map:new THREE.Texture()}
+      })});
+    mat.__tex=tex;
+    return mat;
+  }
+
+  // ============================================================
+  // Integration, proximity, geometry
+  // ============================================================
+  function integrate(cfg,budget,q){
+    var x=cfg.seed[0],y=cfg.seed[1],z=cfg.seed[2],dt=cfg.dt;
+    function F(px,py,pz){return cfg.f(px,py,pz,q);}
+    function step(){
+      var k1=F(x,y,z),
+          k2=F(x+k1[0]*dt/2,y+k1[1]*dt/2,z+k1[2]*dt/2),
+          k3=F(x+k2[0]*dt/2,y+k2[1]*dt/2,z+k2[2]*dt/2),
+          k4=F(x+k3[0]*dt,y+k3[1]*dt,z+k3[2]*dt);
+      x+=dt/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);
+      y+=dt/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);
+      z+=dt/6*(k1[2]+2*k2[2]+2*k3[2]+k4[2]);
+    }
+    function tangent(){
+      var k=F(x,y,z);
+      var l=Math.sqrt(k[0]*k[0]+k[1]*k[1]+k[2]*k[2])||1;
+      return [k[0]/l,k[1]/l,k[2]/l];
+    }
+    for(var w=0;w<cfg.burn;w++)step();
+    if(!isFinite(x+y+z))return [];
+    // Curvature-adaptive emission: a sample is emitted whenever the flow
+    // direction has turned past a small angle since the last sample, or a
+    // max spacing is reached. Bends get dense rings, straights stay lean,
+    // so the polygon budget goes where the eye sees curvature.
+    var pts=[new THREE.Vector3(x,z,y)];
+    var tPrev=tangent(), since=0, steps=0;
+    var maxTotal=budget*cfg.stride*5;
+    var cosThresh=Math.cos(0.040);
+    var maxSpacing=cfg.stride*3;
+    while(pts.length<budget && steps<maxTotal){
+      step();steps++;since++;
+      if(!isFinite(x+y+z))break;
+      var t=tangent();
+      var dp=t[0]*tPrev[0]+t[1]*tPrev[1]+t[2]*tPrev[2];
+      if(dp<cosThresh || since>=maxSpacing){
+        pts.push(new THREE.Vector3(x,z,y));
+        tPrev=t;since=0;
+      }
+    }
+    if(pts.length<50)return pts;   // diverged / degenerate: caller handles
+    var c=new THREE.Vector3();
+    pts.forEach(function(p){c.add(p);});c.multiplyScalar(1/pts.length);
+    var maxR=0;
+    pts.forEach(function(p){p.sub(c);var r=p.length();if(r>maxR)maxR=r;});
+    var s2=26/maxR;
+    pts.forEach(function(p){p.multiplyScalar(s2);});
+    return pts;
+  }
+
+  function nearestStrandDistances(pts){
+    var n=pts.length, cell=3.0, hash=new Map();
+    function key(ix,iy,iz){return ix*73856093 ^ iy*19349663 ^ iz*83492791;}
+    for(var i=0;i<n;i++){
+      var p=pts[i],
+          k=key(Math.floor(p.x/cell),Math.floor(p.y/cell),Math.floor(p.z/cell));
+      var arr=hash.get(k);if(!arr){arr=[];hash.set(k,arr);}
+      arr.push(i);
+    }
+    var GAP=Math.max(60,Math.round(n/120)), minD=new Float32Array(n);
+    for(var i2=0;i2<n;i2++){
+      var p2=pts[i2], best=1e9,
+          ix=Math.floor(p2.x/cell),iy=Math.floor(p2.y/cell),iz=Math.floor(p2.z/cell);
+      for(var dx=-1;dx<=1;dx++)for(var dy=-1;dy<=1;dy++)for(var dz=-1;dz<=1;dz++){
+        var bucket=hash.get(key(ix+dx,iy+dy,iz+dz));
+        if(!bucket)continue;
+        for(var b=0;b<bucket.length;b++){
+          var j=bucket[b];
+          if(Math.abs(j-i2)<GAP)continue;
+          var d=p2.distanceTo(pts[j]);
+          if(d<best)best=d;
+        }
+      }
+      minD[i2]=Math.min(best,cell*1.5);
+    }
+    var sm=new Float32Array(n),K=Math.max(10,Math.round(n/650));
+    for(var s=0;s<n;s++){
+      var acc=0,cnt=0;
+      for(var o=-K;o<=K;o++){
+        var idx=s+o;if(idx<0||idx>=n)continue;
+        acc+=minD[idx];cnt++;
+      }
+      sm[s]=acc/cnt;
+    }
+    return sm;
+  }
+
+  function buildProfile(w,d,b){
+    b=Math.min(b,Math.min(w,d)*0.9);
+    var ARC=params.facets, prof=[];
+    function arc(cx,cy,a0,a1){
+      for(var k=0;k<=ARC;k++){
+        var a=a0+(a1-a0)*k/ARC, nx=Math.cos(a), ny=Math.sin(a);
+        prof.push({px:cx+nx*b, py:cy+ny*b, nx:nx, ny:ny});
+      }
+    }
+    function flat(x0,y0,x1,y1,nx,ny){
+      prof.push({px:x0,py:y0,nx:nx,ny:ny});
+      prof.push({px:x1,py:y1,nx:nx,ny:ny});
+    }
+    flat(w, -d+b,  w,  d-b, 1,0);
+    arc(w-b, d-b, 0, Math.PI/2);
+    flat(w-b, d, -w+b, d, 0,1);
+    arc(-w+b, d-b, Math.PI/2, Math.PI);
+    flat(-w, d-b, -w, -d+b, -1,0);
+    arc(-w+b, -d+b, Math.PI, Math.PI*1.5);
+    flat(-w+b, -d, w-b, -d, 0,-1);
+    arc(w-b, -d+b, Math.PI*1.5, Math.PI*2);
+    prof.push({px:prof[0].px,py:prof[0].py,nx:prof[0].nx,ny:prof[0].ny});
+    return prof;
+  }
+
+  function buildRibbonGeometry(pts,minD){
+    var n=pts.length;
+    var profile=buildProfile(params.width,params.depth,params.bevel);
+    var P=profile.length;
+    var maxProfR=Math.sqrt(params.width*params.width+params.depth*params.depth);
+
+    var tangents=new Array(n);
+    for(var i=0;i<n;i++){
+      var a=pts[Math.max(0,i-1)], b=pts[Math.min(n-1,i+1)];
+      tangents[i]=new THREE.Vector3().subVectors(b,a).normalize();
+    }
+    var normals=new Array(n), binormals=new Array(n);
+    var nrm=new THREE.Vector3(0,1,0);
+    if(Math.abs(tangents[0].dot(nrm))>0.9)nrm.set(1,0,0);
+    nrm.sub(tangents[0].clone().multiplyScalar(nrm.dot(tangents[0]))).normalize();
+    normals[0]=nrm.clone();
+    binormals[0]=new THREE.Vector3().crossVectors(tangents[0],normals[0]);
+    var axis=new THREE.Vector3(), q=new THREE.Quaternion();
+    for(var i1=1;i1<n;i1++){
+      normals[i1]=normals[i1-1].clone();
+      axis.crossVectors(tangents[i1-1],tangents[i1]);
+      if(axis.length()>1e-8){
+        axis.normalize();
+        var angle=Math.acos(Math.min(1,Math.max(-1,tangents[i1-1].dot(tangents[i1]))));
+        q.setFromAxisAngle(axis,angle);
+        normals[i1].applyQuaternion(q);
+      }
+      binormals[i1]=new THREE.Vector3().crossVectors(tangents[i1],normals[i1]);
+    }
+
+    var scale=new Float32Array(n), aoRing=new Float32Array(n);
+    for(var r=0;r<n;r++){
+      scale[r]=Math.min(1, Math.max(0.12, minD[r]*params.clear/maxProfR));
+      var t=Math.min(1, minD[r]/(maxProfR*5));
+      var occl=1-t; occl=occl*occl*(3-2*occl);
+      aoRing[r]=occl;   // raw occlusion; strength is applied live in the shader
+    }
+
+    var arc=new Float32Array(n);arc[0]=0;
+    for(var l=1;l<n;l++)arc[l]=arc[l-1]+pts[l].distanceTo(pts[l-1]);
+    var total=arc[n-1];
+
+    var vertCount=n*P;
+    var positions=new Float32Array(vertCount*3),
+        vnormals=new Float32Array(vertCount*3),
+        vtangents=new Float32Array(vertCount*3),
+        uvs=new Float32Array(vertCount*2),
+        aoAttr=new Float32Array(vertCount);
+    var idx=[];
+    var pos=new THREE.Vector3(), nv=new THREE.Vector3();
+
+    for(var s=0;s<n;s++){
+      var p=pts[s], N=normals[s], B=binormals[s], TG=tangents[s], S=scale[s], shade=aoRing[s];
+      for(var j=0;j<P;j++){
+        var pr=profile[j];
+        pos.set(
+          p.x+(N.x*pr.px+B.x*pr.py)*S,
+          p.y+(N.y*pr.px+B.y*pr.py)*S,
+          p.z+(N.z*pr.px+B.z*pr.py)*S);
+        nv.set(N.x*pr.nx+B.x*pr.ny, N.y*pr.nx+B.y*pr.ny, N.z*pr.nx+B.z*pr.ny).normalize();
+        var o=s*P+j;
+        positions[o*3]=pos.x;positions[o*3+1]=pos.y;positions[o*3+2]=pos.z;
+        vnormals[o*3]=nv.x;vnormals[o*3+1]=nv.y;vnormals[o*3+2]=nv.z;
+        vtangents[o*3]=TG.x;vtangents[o*3+1]=TG.y;vtangents[o*3+2]=TG.z;
+        uvs[o*2]=arc[s]/total;uvs[o*2+1]=j/(P-1);
+        aoAttr[o]=shade;
+      }
+    }
+    for(var s2=0;s2<n-1;s2++){
+      for(var j2=0;j2<P-1;j2++){
+        var a0=s2*P+j2, a1=a0+1, b0=(s2+1)*P+j2, b1=b0+1;
+        idx.push(a0,a1,b0, a1,b1,b0);
+      }
+    }
+    var geo=new THREE.BufferGeometry();
+    geo.setAttribute("position",new THREE.BufferAttribute(positions,3));
+    geo.setAttribute("normal",new THREE.BufferAttribute(vnormals,3));
+    geo.setAttribute("tangent",new THREE.BufferAttribute(vtangents,3));
+    geo.setAttribute("uv",new THREE.BufferAttribute(uvs,2));
+    geo.setAttribute("ao",new THREE.BufferAttribute(aoAttr,1));
+    geo.setIndex(idx);
+    return geo;
+  }
+
+  function buildSculpture(){
+    statusEl.textContent="carving…";statusEl.style.opacity=1;
+    document.getElementById("eqLabel").textContent=ATTRACTORS[attractorName].eq;
+    setTimeout(function(){
+      var cfg=ATTRACTORS[attractorName];
+      var pts=integrate(cfg,params.loops,eqVals);
+      if(pts.length<50){
+        statusEl.textContent="unstable parameters — trajectory diverged, try milder values";
+        setTimeout(function(){statusEl.style.opacity=0;},3500);
+        return;   // keep the previous sculpture
+      }
+      if(sculpture){
+        pivot.remove(sculpture);
+        sculpture.geometry.dispose();
+        if(sculpture.material.__tex)sculpture.material.__tex.map.dispose();
+        sculpture.material.dispose();
+      }
+      var minD=nearestStrandDistances(pts);
+      var geo=buildRibbonGeometry(pts,minD);
+      sculpture=new THREE.Mesh(geo,buildMaterial());
+      geo.computeBoundingBox();
+      var bb=geo.boundingBox;
+      sculpture.position.y=GROUND_Y-bb.min.y;
+      lookTargetY=GROUND_Y+(bb.max.y-bb.min.y)*0.5;
+      pivot.add(sculpture);
+      updateCamera();
+      statusEl.textContent="drag to orbit · scroll to zoom";
+      setTimeout(function(){statusEl.style.opacity=0;},2500);
+    },30);
+  }
+
+  // ============================================================
+  // Orbit
+  // ============================================================
+  var camDist=110, camTheta=0.9, camPhi=1.2, dragging=false, px=0, py=0;
+  var lookTargetYInit=0;
+  function updateCamera(){
+    camPhi=Math.max(0.15,Math.min(Math.PI/2+0.25,camPhi));
+    camera.position.set(
+      camDist*Math.sin(camPhi)*Math.cos(camTheta),
+      lookTargetY+camDist*Math.cos(camPhi),
+      camDist*Math.sin(camPhi)*Math.sin(camTheta));
+    camera.lookAt(0,lookTargetY,0);
+  }
+  container.addEventListener("pointerdown",function(e){dragging=true;px=e.clientX;py=e.clientY;});
+  window.addEventListener("pointerup",function(){dragging=false;});
+  window.addEventListener("pointermove",function(e){
+    if(!dragging)return;
+    camTheta+=(e.clientX-px)*0.005;camPhi-=(e.clientY-py)*0.005;
+    px=e.clientX;py=e.clientY;updateCamera();
+  });
+  container.addEventListener("wheel",function(e){
+    e.preventDefault();
+    camDist=Math.max(35,Math.min(420,camDist*(1+e.deltaY*0.001)));
+    updateCamera();
+  },{passive:false});
+  updateCamera();
+
+  // ============================================================
+  // UI
+  // ============================================================
+  var sel=document.getElementById("attractor");
+  Object.keys(ATTRACTORS).forEach(function(name){
+    var o=document.createElement("option");
+    o.value=name;o.textContent=name;
+    sel.appendChild(o);
+  });
+  sel.value=attractorName;
+
+  // --- live equation parameters ---
+  var eqVals={};
+  function buildEqSliders(){
+    var cfg=ATTRACTORS[attractorName];
+    eqVals={};
+    var box=document.getElementById("eqSliders");
+    box.innerHTML="";
+    var keys=Object.keys(cfg.p||{});
+    document.getElementById("eqGroup").style.display=keys.length?"block":"none";
+    keys.forEach(function(k){
+      var def=cfg.p[k];
+      eqVals[k]=def[0];
+      var row=document.createElement("div");row.className="row";
+      var lab=document.createElement("label");lab.textContent=k;
+      var inp=document.createElement("input");inp.type="range";
+      inp.min=def[1];inp.max=def[2];
+      inp.step=(def[2]-def[1])/200;
+      inp.value=def[0];
+      inp.setAttribute("aria-label","equation parameter "+k);
+      var out=document.createElement("output");
+      out.textContent=Number(def[0]).toFixed(3);
+      inp.addEventListener("input",function(){
+        eqVals[k]=parseFloat(inp.value);
+        out.textContent=eqVals[k].toFixed(3);
+      });
+      inp.addEventListener("change",buildSculpture);   // re-carve on release
+      row.appendChild(lab);row.appendChild(inp);row.appendChild(out);
+      box.appendChild(row);
+    });
+  }
+
+  sel.addEventListener("change",function(){
+    attractorName=sel.value;
+    buildEqSliders();
+    buildSculpture();
+  });
+
+  function bind(id,key,fmt,live){
+    var el=document.getElementById(id),out=document.getElementById(id+"V");
+    el.addEventListener("input",function(){
+      params[key]=parseFloat(el.value);
+      out.textContent=fmt(params[key]);
+      if(live)live();
+    });
+  }
+  var f1=function(v){return v.toFixed(1);},
+      f2=function(v){return v.toFixed(2);},
+      f0=function(v){return v.toFixed(0);};
+  bind("width","width",f2);
+  bind("depth","depth",f2);
+  bind("bevel","bevel",f2);
+  bind("loops","loops",f0);
+  bind("facets","facets",f0);
+  bind("clear","clear",f2);
+  bind("ao","ao",f2,function(){
+    if(sculpture)sculpture.material.uniforms.uAO.value=params.ao;
+  });
+  // profile changes re-carve on slider release — no need to press Carve
+  ["width","depth","bevel","loops","facets","clear"].forEach(function(id){
+    document.getElementById(id).addEventListener("change",buildSculpture);
+  });
+  bind("polish","polish",f2,function(){
+    if(!sculpture)return;
+    var spec=MATERIALS[matName];
+    var rough=(spec.kind==="wood")?(0.85-params.polish*0.55):(spec.rough*(1-params.polish*0.5)+0.06);
+    sculpture.material.uniforms.uRough.value=rough;
+  });
+  bind("aniso","aniso",f2,function(){
+    if(sculpture)sculpture.material.uniforms.uAniso.value=params.aniso;
+  });
+  bind("sun","sun",f2,updateLight);
+  bind("angle","angle",f0,updateLight);
+  bind("soft","soft",f2,function(){
+    floorMat.uniforms.uLightSize.value=params.soft;
+    if(sculpture)sculpture.material.uniforms.uLightSize.value=params.soft;
+  });
+  bind("haze","haze",f2,function(){
+    compMat.uniforms.uDensity.value=params.haze;
+  });
+  bind("tint","tint",f2,function(){
+    updateEnv();
+    updateLight();
+  });
+  function updPanels(){
+    var D2R=Math.PI/180;
+    PANEL_INT.set(params.p1,params.p2,params.p3);
+    PANEL_AZ.set(params.p1az*D2R,params.p2az*D2R,params.p3az*D2R);
+    PANEL_SIZE.set(params.p1sz,params.p2sz,params.p3sz);
+  }
+  bind("p1","p1",f2,updPanels);
+  bind("p2","p2",f2,updPanels);
+  bind("p3","p3",f2,updPanels);
+  bind("p1az","p1az",f0,updPanels);
+  bind("p2az","p2az",f0,updPanels);
+  bind("p3az","p3az",f0,updPanels);
+  bind("p1sz","p1sz",f2,updPanels);
+  bind("p2sz","p2sz",f2,updPanels);
+  bind("p3sz","p3sz",f2,updPanels);
+  bind("gloss","gloss",f2,function(){
+    floorMat.uniforms.uGloss.value=params.gloss;
+  });
+  bind("rot","rot",f1);
+
+  var bgBox=document.getElementById("bgs");
+  Object.keys(BACKDROPS).forEach(function(name){
+    var s=BACKDROPS[name];
+    var b=document.createElement("button");
+    b.type="button";b.className="mat"+(name===backdropName?" active":"");
+    b.textContent=name;
+    b.style.background="linear-gradient(180deg,"+s.ceil+","+s.wall+" 55%,"+s.floor+")";
+    b.addEventListener("click",function(){
+      backdropName=name;
+      bgBox.querySelectorAll(".mat").forEach(function(el){el.classList.remove("active");});
+      b.classList.add("active");
+      updateEnv();
+    });
+    bgBox.appendChild(b);
+  });
+
+  var matBox=document.getElementById("mats");
+  Object.keys(MATERIALS).forEach(function(name){
+    var m=MATERIALS[name];
+    var b=document.createElement("button");
+    b.type="button";b.className="mat"+(name===matName?" active":"");
+    b.textContent=name;
+    b.style.background=(m.kind==="wood")
+      ?"linear-gradient(90deg,"+m.dark+","+m.base+","+m.ring+")"
+      :"linear-gradient(90deg,#555,"+m.color+",#888)";
+    b.addEventListener("click",function(){
+      matName=name;
+      matBox.querySelectorAll(".mat").forEach(function(el){el.classList.remove("active");});
+      b.classList.add("active");
+      if(sculpture){
+        var old=sculpture.material;
+        sculpture.material=buildMaterial();
+        if(old.__tex)old.__tex.map.dispose();
+        old.dispose();
+      }
+    });
+    matBox.appendChild(b);
+  });
+
+  document.getElementById("rebuild").addEventListener("click",buildSculpture);
+  document.getElementById("save").addEventListener("click",function(){
+    var a=document.createElement("a");
+    a.download=attractorName.toLowerCase().replace(/\s+/g,"-")+"-"+Date.now()+".png";
+    a.href=renderer.domElement.toDataURL("image/png");
+    a.click();
+  });
+  document.getElementById("toggle").addEventListener("click",function(){
+    document.getElementById("panel").classList.toggle("open");
+  });
+  function resizeTargets(){
+    var s=rtSize(), d=QUALITY[quality].mirrorDiv;
+    sceneRT.setSize(s.w,s.h);
+    mirrorRT.setSize(Math.floor(s.w/d),Math.floor(s.h/d));
+    postRT.setSize(s.w,s.h);
+    fxaaMat.uniforms.uInvRes.value.set(1/s.w,1/s.h);
+  }
+  window.addEventListener("resize",function(){
+    camera.aspect=window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth,window.innerHeight);
+    resizeTargets();
+  });
+
+  function applyQuality(){
+    var q=QUALITY[quality];
+    shadowRT.setSize(q.sun,q.sun);
+    for(var i=0;i<3;i++)panelShadowRTs[i].setSize(q.panel,q.panel);
+    compMat.fragmentShader=COMP_FRAG
+      .replace("#define STEPS_N 40","#define STEPS_N "+q.steps)
+      .replace("#define VOL_PANELS 1","#define VOL_PANELS "+(q.volPanels?1:0));
+    compMat.needsUpdate=true;
+    resizeTargets();
+  }
+  var qBtns={low:document.getElementById("qLow"),med:document.getElementById("qMed"),high:document.getElementById("qHigh")};
+  Object.keys(qBtns).forEach(function(k){
+    qBtns[k].addEventListener("click",function(){
+      quality=k;
+      Object.keys(qBtns).forEach(function(j){qBtns[j].classList.toggle("on",j===k);});
+      applyQuality();
+    });
+  });
+
+  // ============================================================
+  // Frame: shadow -> mirror -> scene -> volumetric composite
+  // ============================================================
+  var reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var invProjView=new THREE.Matrix4();
+  updateLight();
+  buildEqSliders();
+  buildSculpture();
+
+  function animate(){
+    requestAnimationFrame(animate);
+    if(!reduceMotion && !dragging){camTheta+=params.rot*0.0009;updateCamera();}
+
+    // 1) shadow depth from the sun + each studio panel (sculpture only)
+    updatePanelCams();
+    floor.visible=false;
+    dome.visible=false;
+    scene.overrideMaterial=depthMat;
+    var oldBg=scene.background;scene.background=null;
+    renderer.setRenderTarget(shadowRT);
+    renderer.setClearColor(0xffffff,1);
+    renderer.clear();
+    renderer.render(scene,lightCam);
+    for(var si=0;si<3;si++){
+      renderer.setRenderTarget(panelShadowRTs[si]);
+      renderer.clear();
+      renderer.render(scene,panelCams[si]);
+    }
+    scene.overrideMaterial=null;
+    scene.background=oldBg;
+    dome.visible=true;
+
+    // 2) planar reflection (floor hidden, mirrored camera)
+    updateMirror();
+    renderer.setRenderTarget(mirrorRT);
+    renderer.setClearColor(scene.background,1);
+    renderer.clear();
+    renderer.render(scene,mirrorCam);
+    floor.visible=true;
+
+    // 3) main scene into HDR target with depth
+    renderer.setRenderTarget(sceneRT);
+    renderer.clear();
+    renderer.render(scene,camera);
+
+    // 4) volumetric raymarch composite into LDR buffer
+    camera.updateMatrixWorld();
+    invProjView.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
+    invProjView.invert();
+    compMat.uniforms.uInvProjView.value.copy(invProjView);
+    renderer.setRenderTarget(postRT);
+    renderer.render(compScene,compCam);
+
+    // 5) FXAA resolve to screen
+    renderer.setRenderTarget(null);
+    renderer.render(fxaaScene,compCam);
+  }
+  animate();
+})();
+</script>
+</body>
+</html>
