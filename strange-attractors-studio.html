@@ -150,7 +150,6 @@
   </div>
 
   <div class="group btns">
-    <button class="act" id="rebuild">Carve</button>
     <button class="act" id="save">Save PNG</button>
   </div>
 </div>
@@ -1404,7 +1403,7 @@
   bind("ao","ao",f2,function(){
     if(sculpture)sculpture.material.uniforms.uAO.value=params.ao;
   });
-  // profile changes re-carve on slider release — no need to press Carve
+  // profile changes re-carve automatically on slider release
   ["width","depth","bevel","loops","facets","clear"].forEach(function(id){
     document.getElementById(id).addEventListener("change",buildSculpture);
   });
@@ -1489,7 +1488,6 @@
     matBox.appendChild(b);
   });
 
-  document.getElementById("rebuild").addEventListener("click",buildSculpture);
   // draw text with manual letter-spacing (ctx.letterSpacing is not universal)
   function drawSpaced(ctx,text,x,y,spacing){
     for(var i=0;i<text.length;i++){
@@ -1559,7 +1557,6 @@
   // ============================================================
   // Frame: shadow -> mirror -> scene -> volumetric composite
   // ============================================================
-  var reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var invProjView=new THREE.Matrix4();
   updateLight();
   buildEqSliders();
@@ -1567,7 +1564,7 @@
 
   function animate(){
     requestAnimationFrame(animate);
-    if(!reduceMotion && !dragging){camTheta+=params.rot*0.0009;updateCamera();}
+    if(!dragging){camTheta+=params.rot*0.0009;updateCamera();}
 
     // 1) shadow depth from the sun + each studio panel (sculpture only)
     updatePanelCams();
